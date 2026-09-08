@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PMGSY Architecture – Sequence Diagram</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: #0d1117;
+  font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+  color: #c9d1d9;
+  min-height: 100vh;
+  padding: 28px 20px 52px;
+}
+h1 {
+  text-align: center;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #e6edf3;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.subtitle {
+  text-align: center;
+  font-size: .72rem;
+  color: #6e7681;
+  margin-bottom: 30px;
+  letter-spacing: .04em;
+}
+.wrap {
+  max-width: 1080px;
+  margin: 0 auto;
+}
+
+/* ── ACTOR HEADER ── */
+.actors-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0;
+}
+.actor-col {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+.actor-box {
+  border: 1.5px solid #30363d;
+  background: #161b22;
+  border-radius: 5px;
+  padding: 8px 4px 6px;
+  text-align: center;
+  width: 88%;
+}
+.actor-box .name { font-size: .72rem; font-weight: 700; display: block; }
+.actor-box .sub  { font-size: .6rem; opacity: .65; display: block; margin-top: 2px; }
+
+.actor-box.user    { border-color: #3b82d4; }
+.actor-box.user .name { color: #7cb9ff; }
+.actor-box.fe      { border-color: #7c5cd8; }
+.actor-box.fe .name{ color: #b490ff; }
+.actor-box.flask   { border-color: #1e8a4c; }
+.actor-box.flask .name { color: #56d68a; }
+.actor-box.model   { border-color: #d97706; }
+.actor-box.model .name { color: #fbbf24; }
+.actor-box.iam     { border-color: #c0392b; }
+.actor-box.iam .name { color: #ff7a6b; }
+.actor-box.granite { border-color: #0891b2; }
+.actor-box.granite .name { color: #67d8ef; }
+
+/* ── SVG canvas takes up remaining space ── */
+svg { display: block; width: 100%; }
+
+/* ── LEGEND ── */
+.legend {
+  display: flex;
+  gap: 24px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 18px;
+  font-size: .7rem;
+  color: #6e7681;
+}
+.leg-item { display: flex; align-items: center; gap: 6px; }
+.leg-line { width: 28px; height: 2px; }
+.leg-solid { background: #8b949e; }
+.leg-dash  { background: repeating-linear-gradient(90deg,#8b949e 0,#8b949e 5px,transparent 5px,transparent 9px); }
+
+footer {
+  text-align: center;
+  font-size: .65rem;
+  color: #3d444d;
+  border-top: 1px solid #21262d;
+  padding-top: 14px;
+  margin-top: 32px;
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <h1>PMGSY Intelligent Classifier — Architecture</h1>
+  <div class="subtitle">Sequence Diagram &nbsp;·&nbsp; Full Request / Response Flow</div>
+
+  <!-- Actor header boxes -->
+  <div class="actors-row" id="actorRow">
+    <div class="actor-col"><div class="actor-box user"><span class="name">User</span><span class="sub">Browser</span></div></div>
+    <div class="actor-col"><div class="actor-box fe"><span class="name">Frontend</span><span class="sub">index.html</span></div></div>
+    <div class="actor-col"><div class="actor-box flask"><span class="name">Flask Backend</span><span class="sub">app.py · :5000</span></div></div>
+    <div class="actor-col"><div class="actor-box model"><span class="name">ML Model</span><span class="sub">RandomForest .pkl</span></div></div>
+    <div class="actor-col"><div class="actor-box iam"><span class="name">IBM IAM</span><span class="sub">iam.cloud.ibm.com</span></div></div>
+    <div class="actor-col"><div class="actor-box granite"><span class="name">IBM Granite</span><span class="sub">granite-4-h-small</span></div></div>
+  </div>
+
+  <!-- SVG sequence body -->
+  <svg id="seqSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+
+  <!-- Legend -->
+  <div class="legend">
+    <div class="leg-item"><div class="leg-line leg-solid"></div> Synchronous call</div>
+    <div class="leg-item"><div class="leg-line leg-dash"></div> Return / response (dashed)</div>
+    <div class="leg-item">
+      <svg width="18" height="14" viewBox="0 0 18 14" style="margin-right:2px">
+        <rect x="1" y="1" width="16" height="12" rx="2" fill="#21262d" stroke="#3d444d" stroke-dasharray="3,2" stroke-width="1"/>
+        <text x="9" y="10" text-anchor="middle" font-size="7" fill="#8b949e" font-family="system-ui">LOOP</text>
+      </svg> Inference loop
+    </div>
+    <div class="leg-item">
+      <svg width="14" height="14" viewBox="0 0 14 14">
+        <rect x="1" y="1" width="12" height="12" rx="2" fill="rgba(30,138,76,0.18)" stroke="rgba(30,138,76,0.4)" stroke-width="1"/>
+      </svg> Flask activation
+    </div>
+  </div>
+</div>
+
+<footer>PMGSY Intelligent Classifier &nbsp;·&nbsp; ML: Random Forest (89.7% accuracy) &nbsp;·&nbsp; AI: IBM Granite-4-H-Small &nbsp;·&nbsp; Made with IBM Bob</footer>
+
+<script>
+(function(){
+
+// ── Actor definitions ────────────────────────────────────────────
+const ACTORS = [
+  { key:'user',    label:'User',          sub:'Browser',            stroke:'#3b82d4', text:'#7cb9ff'  },
+  { key:'fe',      label:'Frontend',      sub:'index.html',         stroke:'#7c5cd8', text:'#b490ff'  },
+  { key:'flask',   label:'Flask Backend', sub:'app.py · :5000',     stroke:'#1e8a4c', text:'#56d68a'  },
+  { key:'model',   label:'ML Model',      sub:'RandomForest',       stroke:'#d97706', text:'#fbbf24'  },
+  { key:'iam',     label:'IBM IAM',       sub:'iam.cloud.ibm.com',  stroke:'#c0392b', text:'#ff7a6b'  },
+  { key:'granite', label:'IBM Granite',   sub:'granite-4-h-small',  stroke:'#0891b2', text:'#67d8ef'  },
+];
+const N = ACTORS.length;
+
+// ── Message sequence ─────────────────────────────────────────────
+// type: 'msg' | 'spacer' | 'spacer-sm' | 'self' | 'loop-start' | 'loop-end'
+// from/to: 0-5 actor index
+// dash: return dashed arrow
+const MSGS = [
+  // section label
+  { type:'section', label:'① PAGE LOAD' },
+
+  { type:'msg', from:0, to:1, label:'Open index.html in browser',                  color:'#7cb9ff', dash:false },
+  { type:'msg', from:1, to:2, label:'GET /model-info',                              color:'#b490ff', dash:false },
+  { type:'msg', from:2, to:1, label:'{ accuracy, cv_score, feature_importances }', color:'#56d68a', dash:true  },
+  { type:'msg', from:1, to:0, label:'Render Model Stats Panel + Feature Bar Chart', color:'#b490ff', dash:true  },
+
+  { type:'spacer' },
+  { type:'section', label:'② USER SUBMITS PROJECT FORM' },
+
+  { type:'msg', from:0, to:1, label:'Fill 11 input fields → click "Classify Project"',  color:'#7cb9ff', dash:false },
+  { type:'msg', from:1, to:2, label:'POST /predict  { 11 raw project fields as JSON }',  color:'#b490ff', dash:false },
+
+  { type:'spacer-sm' },
+  { type:'loop-start', label:'INFERENCE', condition:'single prediction request' },
+
+  { type:'self', actor:2, label:'engineer_features() → 16-dim vector (11 raw + 5 derived ratios)', color:'#56d68a' },
+  { type:'msg', from:2, to:3, label:'clf.predict(X) + clf.predict_proba(X)',              color:'#56d68a', dash:false },
+  { type:'msg', from:3, to:2, label:'predicted_scheme label + probability[5 classes]',    color:'#fbbf24', dash:true  },
+
+  { type:'spacer-sm' },
+  { type:'msg', from:2, to:4, label:'POST  grant_type=apikey  (if token expired/missing)', color:'#56d68a', dash:false },
+  { type:'msg', from:4, to:2, label:'Bearer token (3600 s, cached in memory)',              color:'#ff7a6b', dash:true  },
+
+  { type:'spacer-sm' },
+  { type:'msg', from:2, to:5, label:'POST /ml/v1/text/chat  { system prompt + project summary }', color:'#56d68a', dash:false },
+  { type:'msg', from:5, to:2, label:'Natural-language explanation  (2–4 sentences)',              color:'#67d8ef', dash:true  },
+
+  { type:'loop-end' },
+  { type:'spacer-sm' },
+
+  // ── Response back ──
+  { type:'msg', from:2, to:1, label:'{ predicted_scheme, probabilities, explanation, llm_error }', color:'#56d68a', dash:true },
+  { type:'msg', from:1, to:0, label:'Render: scheme badge + probability bars + AI explanation',     color:'#b490ff', dash:true },
+];
+
+// ── Layout constants ─────────────────────────────────────────────
+const ROW_H     = 50;
+const SPACER_H  = 22;
+const SM_H      = 12;
+const SECT_H    = 26;
+const SELF_H    = 44;
+const LOOP_PAD  = 18;
+
+function draw() {
+  const svg = document.getElementById('seqSvg');
+  const wrap = document.querySelector('.wrap');
+  const W = wrap.offsetWidth;
+
+  // actor header height
+  const actorRow = document.getElementById('actorRow');
+  const AH = actorRow.offsetHeight;
+
+  // Center x for each actor column
+  function cx(i) { return (i + 0.5) * W / N; }
+
+  // ── Compute Y positions ──
+  let y = 10; // starts after actor header
+  const rows = [];
+  let loopStartY = null;
+  let loopLabel = '', loopCond = '';
+
+  for (const m of MSGS) {
+    if (m.type === 'spacer')    { rows.push({ ...m, y, h:SPACER_H }); y += SPACER_H; continue; }
+    if (m.type === 'spacer-sm') { rows.push({ ...m, y, h:SM_H     }); y += SM_H;     continue; }
+    if (m.type === 'section')   { rows.push({ ...m, y, h:SECT_H   }); y += SECT_H;   continue; }
+    if (m.type === 'loop-start'){ loopStartY = y; loopLabel = m.label||'LOOP'; loopCond = m.condition||''; y += LOOP_PAD; continue; }
+    if (m.type === 'loop-end')  { rows.push({ type:'loop-box', y1:loopStartY, y2:y, label:loopLabel, cond:loopCond }); y += LOOP_PAD; loopStartY=null; continue; }
+    if (m.type === 'self')      { rows.push({ ...m, y, h:SELF_H   }); y += SELF_H;   continue; }
+    rows.push({ ...m, y, h:ROW_H }); y += ROW_H;
+  }
+
+  const TOTAL_H = y + 14;
+  svg.setAttribute('height', TOTAL_H);
+  svg.setAttribute('viewBox', `0 0 ${W} ${TOTAL_H}`);
+
+  // ── Build SVG string ──
+  let s = `<defs>
+    ${mkMarker('a-def','#8b949e')}
+    ${mkMarker('a-blue','#7cb9ff')}
+    ${mkMarker('a-purple','#b490ff')}
+    ${mkMarker('a-green','#56d68a')}
+    ${mkMarker('a-yellow','#fbbf24')}
+    ${mkMarker('a-red','#ff7a6b')}
+    ${mkMarker('a-cyan','#67d8ef')}
+  </defs>`;
+
+  function mkMarker(id, color) {
+    return `<marker id="${id}" markerWidth="9" markerHeight="9" refX="8" refY="3.5" orient="auto">
+      <path d="M0,0 L0,7 L9,3.5 z" fill="${color}"/>
+    </marker>`;
+  }
+
+  function markerFor(color) {
+    const map = {'#7cb9ff':'a-blue','#b490ff':'a-purple','#56d68a':'a-green','#fbbf24':'a-yellow','#ff7a6b':'a-red','#67d8ef':'a-cyan'};
+    return map[color] || 'a-def';
+  }
+
+  // Lifelines
+  for (let i = 0; i < N; i++) {
+    const x = cx(i);
+    s += `<line x1="${x}" y1="0" x2="${x}" y2="${TOTAL_H}" stroke="#21262d" stroke-width="1.5" stroke-dasharray="6,5"/>`;
+  }
+
+  // Loop box
+  for (const r of rows) {
+    if (r.type !== 'loop-box') continue;
+    const lx=8, lw=W-16;
+    s += `<rect x="${lx}" y="${r.y1}" width="${lw}" height="${r.y2-r.y1}" rx="5"
+        fill="rgba(255,255,255,0.022)" stroke="#3d444d" stroke-dasharray="5,4" stroke-width="1"/>`;
+    // tab
+    s += `<rect x="${lx}" y="${r.y1}" width="100" height="18" rx="3"
+        fill="#1c2128" stroke="#3d444d" stroke-dasharray="5,4" stroke-width="1"/>`;
+    s += `<text x="${lx+6}" y="${r.y1+12}" font-size="9" font-weight="700" fill="#8b949e"
+        font-family="system-ui,sans-serif" letter-spacing="0.07">${r.label}</text>`;
+    s += `<text x="${lx+108}" y="${r.y1+12}" font-size="9" fill="#6e7681"
+        font-family="system-ui,sans-serif">${r.cond}</text>`;
+  }
+
+  // Section labels
+  let seqN = 1;
+  for (const r of rows) {
+    if (r.type === 'section') {
+      s += `<rect x="0" y="${r.y+2}" width="${W}" height="${r.h-4}" fill="rgba(255,255,255,0.025)"/>`;
+      s += `<text x="12" y="${r.y+r.h-8}" font-size="9.5" font-weight="700" fill="#484f58"
+          font-family="system-ui,sans-serif" letter-spacing="0.08">${r.label}</text>`;
+    }
+  }
+
+  // Messages
+  for (const r of rows) {
+    if (r.type !== 'msg' && r.type !== 'self') continue;
+
+    const cy_r = r.y + r.h / 2;
+
+    if (r.type === 'self') {
+      const x = cx(r.actor);
+      const lw = 46, lh = 26;
+      s += `<path d="M${x},${cy_r-lh/2} C${x+lw},${cy_r-lh/2} ${x+lw},${cy_r+lh/2} ${x},${cy_r+lh/2}"
+          stroke="${r.color}" stroke-width="1.5" fill="none" marker-end="url(#${markerFor(r.color)})"/>`;
+      // label clipped
+      const label = r.label.length > 55 ? r.label.slice(0,54)+'…' : r.label;
+      s += `<rect x="${x+lw+6}" y="${cy_r-8}" width="${Math.min(r.label.length*5.4, W - x - lw - 20)}" height="13" rx="2" fill="#0d1117"/>`;
+      s += `<text x="${x+lw+8}" y="${cy_r+4}" font-size="10" fill="${r.color}"
+          font-family="system-ui,sans-serif">${label}</text>`;
+      seqN++;
+      continue;
+    }
+
+    // msg
+    const x1 = cx(r.from);
+    const x2 = cx(r.to);
+    const going_right = x2 > x1;
+    const pad = 10;
+    const lx1 = going_right ? x1 + pad : x1 - pad;
+    const lx2 = going_right ? x2 - pad : x2 + pad;
+    const stroke = r.dash ? '5,4' : 'none';
+    const sw = r.dash ? 1.3 : 1.9;
+
+    // Flask activation box (when flask is target)
+    if (r.to === 2) {
+      s += `<rect x="${cx(2)-6}" y="${cy_r-13}" width="12" height="26" rx="2"
+          fill="rgba(30,138,76,0.14)" stroke="rgba(30,138,76,0.35)" stroke-width="1"/>`;
+    }
+
+    // Arrow
+    s += `<line x1="${lx1}" y1="${cy_r}" x2="${lx2}" y2="${cy_r}"
+        stroke="${r.color}" stroke-width="${sw}"
+        ${r.dash ? `stroke-dasharray="${stroke}"` : ''}
+        marker-end="url(#${markerFor(r.color)})"/>`;
+
+    // Label background + text
+    const midX = (lx1 + lx2) / 2;
+    const maxW = Math.abs(lx2 - lx1) - 24;
+    const charsMax = Math.floor(maxW / 5.6);
+    const labelTxt = r.label.length > charsMax ? r.label.slice(0, charsMax-1)+'…' : r.label;
+    const bgW = Math.min(r.label.length * 5.6 + 10, maxW);
+
+    s += `<rect x="${midX - bgW/2}" y="${cy_r-16}" width="${bgW}" height="13" rx="2" fill="#0d1117"/>`;
+    s += `<text x="${midX}" y="${cy_r-6}" text-anchor="middle" font-size="10"
+        fill="${r.color}" font-family="system-ui,sans-serif"
+        ${r.dash ? 'font-style="italic"' : ''}>${labelTxt}</text>`;
+
+    // Sequence number circle
+    const nCx = going_right ? lx1 + 14 : lx1 - 14;
+    s += `<circle cx="${nCx}" cy="${cy_r}" r="9" fill="#1c2128" stroke="${r.color}" stroke-width="1"/>`;
+    s += `<text x="${nCx}" y="${cy_r+4}" text-anchor="middle" font-size="8" font-weight="700"
+        fill="${r.color}" font-family="system-ui,sans-serif">${seqN}</text>`;
+    seqN++;
+  }
+
+  // Bottom actor boxes (mirror of top)
+  const actorBoxH = AH;
+  for (let i = 0; i < N; i++) {
+    const a = ACTORS[i];
+    const x = cx(i);
+    const bw = (W / N) * 0.82;
+    const bx = x - bw / 2;
+    const by = TOTAL_H - actorBoxH + 2;
+    s += `<rect x="${bx}" y="${by}" width="${bw}" height="${actorBoxH - 6}" rx="5"
+        fill="#161b22" stroke="${a.stroke}" stroke-width="1.5"/>`;
+    s += `<text x="${x}" y="${by + actorBoxH*0.42}" text-anchor="middle" font-size="11" font-weight="700"
+        fill="${a.text}" font-family="system-ui,sans-serif">${a.label}</text>`;
+    s += `<text x="${x}" y="${by + actorBoxH*0.72}" text-anchor="middle" font-size="9"
+        fill="#6e7681" font-family="system-ui,sans-serif">${a.sub}</text>`;
+  }
+
+  svg.innerHTML = s;
+}
+
+window.addEventListener('DOMContentLoaded', () => setTimeout(draw, 50));
+window.addEventListener('resize', () => setTimeout(draw, 60));
+
+})();
+</script>
+</body>
+</html>

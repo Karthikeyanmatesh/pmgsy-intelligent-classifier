@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PMGSY Intelligent Classifier</title>
+<style>
+  :root {
+    --bg:        #f0f4f8;
+    --card:      #ffffff;
+    --border:    #d1dbe8;
+    --text:      #1a2636;
+    --muted:     #5a6a7d;
+    --accent:    #1a73e8;
+    --accent2:   #0b5fcc;
+    --green:     #1e8a4c;
+    --red:       #c0392b;
+    --header-bg: #0a2d5e;
+    --header-fg: #ffffff;
+    --tag-I:     #1565c0;
+    --tag-II:    #2e7d32;
+    --tag-III:   #6a1b9a;
+    --tag-RCP:   #b71c1c;
+    --tag-JAN:   #e65100;
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  body{ font-family:-apple-system,"Segoe UI",system-ui,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+
+  /* HEADER */
+  header{ background:var(--header-bg); color:var(--header-fg); padding:18px 32px; display:flex; align-items:center; gap:16px; box-shadow:0 2px 8px rgba(0,0,0,.25); }
+  .logo{ width:44px; height:44px; background:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .logo svg{ width:28px; height:28px; }
+  header h1{ font-size:1.3rem; font-weight:700; line-height:1.2; }
+  header p{ font-size:.8rem; opacity:.75; margin-top:2px; }
+
+  /* LAYOUT */
+  .page{ max-width:1120px; margin:0 auto; padding:24px 20px 48px; }
+
+  /* FILE:// WARNING */
+  #file-warning{ display:none; background:#fff3cd; border:2px solid #f0ad4e; border-radius:10px; padding:16px 20px; margin-bottom:20px; font-size:.88rem; color:#7d4e00; line-height:1.8; }
+  #file-warning strong{ display:block; font-size:1rem; margin-bottom:4px; color:#5a3500; }
+  #file-warning a{ color:#1a73e8; font-weight:700; }
+  #file-warning code{ background:#fde8a0; padding:2px 6px; border-radius:4px; font-size:.82rem; }
+
+  /* CARD */
+  .card{ background:var(--card); border:1px solid var(--border); border-radius:12px; padding:24px; }
+  .card-title{ font-size:1rem; font-weight:700; color:var(--text); margin-bottom:18px; display:flex; align-items:center; gap:8px; }
+  .card-title svg{ width:20px; height:20px; opacity:.55; flex-shrink:0; }
+
+  /* TOP ROW: form + sidebar */
+  .top-row{ display:grid; grid-template-columns:1fr 380px; gap:20px; }
+  @media(max-width:860px){ .top-row{ grid-template-columns:1fr; } }
+
+  /* FORM */
+  .section-head{ font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); margin:0 0 10px; padding-bottom:6px; border-bottom:1px solid var(--border); }
+  .form-section{ margin-bottom:18px; }
+  .form-row{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  @media(max-width:480px){ .form-row{ grid-template-columns:1fr; } }
+  label{ display:block; font-size:.78rem; font-weight:600; color:var(--muted); margin-bottom:4px; }
+  input[type=number]{ width:100%; padding:8px 12px; border:1.5px solid var(--border); border-radius:7px; font-size:.9rem; color:var(--text); background:#fafcff; transition:border .15s; }
+  input[type=number]:focus{ outline:none; border-color:var(--accent); background:#fff; }
+
+  /* BUTTON */
+  .btn-row{ display:flex; gap:12px; margin-top:20px; flex-wrap:wrap; }
+  .btn{ display:inline-flex; align-items:center; gap:8px; padding:11px 28px; background:var(--accent); color:#fff; border:none; border-radius:8px; font-size:.95rem; font-weight:700; cursor:pointer; transition:background .2s; }
+  .btn:hover{ background:var(--accent2); }
+  .btn:disabled{ background:#9db5d3; cursor:not-allowed; }
+  .btn-outline{ background:transparent; color:var(--accent); border:1.5px solid var(--accent); }
+  .btn-outline:hover{ background:#e8f0fe; }
+  .spinner{ width:18px; height:18px; border:2.5px solid rgba(255,255,255,.4); border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+
+  /* SIDEBAR */
+  .sidebar{ display:flex; flex-direction:column; gap:16px; }
+
+  /* MODEL STATS */
+  .stat-row{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:14px; }
+  .stat-box{ background:#f5f8fc; border-radius:8px; padding:10px; text-align:center; }
+  .stat-val{ font-size:1.25rem; font-weight:800; color:var(--accent); }
+  .stat-lbl{ font-size:.68rem; color:var(--muted); margin-top:2px; }
+  .feat-row{ display:flex; align-items:center; gap:8px; margin-bottom:7px; font-size:.78rem; }
+  .feat-name{ flex:1 1 120px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .feat-track{ flex:2; background:#e8eef5; border-radius:3px; height:8px; }
+  .feat-fill{ height:100%; border-radius:3px; background:var(--accent); }
+  .feat-pct{ width:36px; text-align:right; color:var(--muted); font-size:.72rem; }
+
+  /* RESULT — full width, below the top row */
+  #result-section{ margin-top:20px; display:none; }
+
+  .result-card{ border:2px solid var(--accent); border-radius:14px; background:#fff; overflow:hidden; }
+
+  .result-header{ background:linear-gradient(135deg,#0a2d5e 0%,#1a73e8 100%); color:#fff; padding:20px 24px; }
+  .result-header-top{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+  .result-title{ font-size:.72rem; text-transform:uppercase; letter-spacing:.1em; opacity:.75; margin-bottom:8px; }
+  .scheme-pill{ display:inline-block; padding:8px 22px; border-radius:24px; font-size:1.15rem; font-weight:800; color:#fff; border:2px solid rgba(255,255,255,.5); }
+  .pill-I   { background:#1565c0; }
+  .pill-II  { background:#2e7d32; }
+  .pill-III { background:#6a1b9a; }
+  .pill-RCP { background:#b71c1c; }
+  .pill-JAN { background:#e65100; }
+  .conf-chip{ background:rgba(255,255,255,.2); border:1px solid rgba(255,255,255,.4); border-radius:20px; padding:6px 16px; font-size:.85rem; font-weight:700; }
+
+  .result-body{ display:grid; grid-template-columns:1fr 1fr; gap:0; }
+  @media(max-width:700px){ .result-body{ grid-template-columns:1fr; } }
+
+  .result-probs{ padding:22px 24px; border-right:1px solid var(--border); }
+  .result-probs h3{ font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); margin-bottom:14px; }
+  .prob-item{ margin-bottom:12px; }
+  .prob-meta{ display:flex; justify-content:space-between; font-size:.82rem; margin-bottom:5px; }
+  .prob-name{ font-weight:700; }
+  .prob-name.winner{ color:var(--accent); }
+  .prob-pct{ color:var(--muted); font-weight:600; }
+  .bar-track{ background:#e8eef5; border-radius:5px; height:11px; overflow:hidden; }
+  .bar-fill{ height:100%; border-radius:5px; transition:width .7s cubic-bezier(.4,0,.2,1); }
+  .bar-I   { background:#1565c0; }
+  .bar-II  { background:#2e7d32; }
+  .bar-III { background:#6a1b9a; }
+  .bar-RCP { background:#b71c1c; }
+  .bar-JAN { background:#e65100; }
+
+  .result-explain{ padding:22px 24px; }
+  .result-explain h3{ font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--accent); margin-bottom:12px; }
+  .explain-text{ font-size:.88rem; line-height:1.75; color:var(--text); background:#f0f7ff; border-left:4px solid var(--accent); border-radius:0 8px 8px 0; padding:14px 16px; }
+  .explain-text.fallback{ background:#fff8f0; border-left-color:#e67e22; }
+
+  /* SCHEME GUIDE */
+  .scheme-item{ display:flex; align-items:flex-start; gap:10px; margin-bottom:10px; padding:9px 10px; border-radius:8px; background:#f7faff; }
+  .dot{ width:11px; height:11px; border-radius:50%; flex-shrink:0; margin-top:3px; }
+  .dot-I{ background:var(--tag-I); } .dot-II{ background:var(--tag-II); } .dot-III{ background:var(--tag-III); } .dot-RCP{ background:var(--tag-RCP); } .dot-JAN{ background:var(--tag-JAN); }
+  .scheme-name{ font-size:.8rem; font-weight:700; }
+  .scheme-desc{ font-size:.73rem; color:var(--muted); line-height:1.5; margin-top:2px; }
+
+  /* TOAST */
+  #toast{ position:fixed; bottom:24px; right:24px; background:#1a2636; color:#fff; padding:12px 20px; border-radius:8px; font-size:.84rem; opacity:0; pointer-events:none; transition:opacity .3s; z-index:999; max-width:340px; line-height:1.5; }
+  #toast.show{ opacity:1; }
+
+  footer{ text-align:center; padding:18px; font-size:.72rem; color:var(--muted); border-top:1px solid var(--border); margin-top:32px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#0a2d5e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+      <polyline points="9 22 9 12 15 12 15 22"/>
+    </svg>
+  </div>
+  <div>
+    <h1>PMGSY Intelligent Classifier</h1>
+    <p>Classify rural infrastructure projects into the correct PMGSY scheme using ML + IBM Granite AI</p>
+  </div>
+</header>
+
+<div class="page">
+
+  <!-- file:// warning -->
+  <div id="file-warning">
+    <strong>⚠️ Open this app through the Flask server — not by double-clicking the file.</strong>
+    You are viewing this as a local file (<code>file://…</code>) which blocks all API calls.<br>
+    1. Run in terminal: <code>python pmgsy_app/backend/app.py</code><br>
+    2. Then visit: <a href="http://localhost:5000" target="_blank">http://localhost:5000</a>
+  </div>
+
+  <!-- TOP ROW -->
+  <div class="top-row">
+
+    <!-- LEFT: Form -->
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        Project Characteristics
+      </div>
+
+      <form id="classifyForm" autocomplete="off">
+
+        <div class="form-section">
+          <p class="section-head">Sanctioned Works</p>
+          <div class="form-row">
+            <div><label>No. of Road Works Sanctioned</label><input type="number" name="NO_OF_ROAD_WORK_SANCTIONED"     value="50"    min="0" step="1"/></div>
+            <div><label>Length Sanctioned (km)</label>        <input type="number" name="LENGTH_OF_ROAD_WORK_SANCTIONED" value="120.5" min="0" step="0.01"/></div>
+            <div><label>No. of Bridges Sanctioned</label>     <input type="number" name="NO_OF_BRIDGES_SANCTIONED"       value="2"     min="0" step="1"/></div>
+            <div><label>Sanctioned Cost (₹ Cr)</label>        <input type="number" name="COST_OF_WORKS_SANCTIONED"       value="85.5"  min="0" step="0.01"/></div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <p class="section-head">Completed Works</p>
+          <div class="form-row">
+            <div><label>No. of Road Works Completed</label>   <input type="number" name="NO_OF_ROAD_WORKS_COMPLETED"     value="45"    min="0" step="1"/></div>
+            <div><label>Length Completed (km)</label>          <input type="number" name="LENGTH_OF_ROAD_WORK_COMPLETED"  value="108.2" min="0" step="0.01"/></div>
+            <div><label>No. of Bridges Completed</label>       <input type="number" name="NO_OF_BRIDGES_COMPLETED"        value="2"     min="0" step="1"/></div>
+            <div><label>Expenditure Occurred (₹ Cr)</label>   <input type="number" name="EXPENDITURE_OCCURED"            value="76.3"  min="0" step="0.01"/></div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <p class="section-head">Balance Works</p>
+          <div class="form-row">
+            <div><label>No. of Road Works Balance</label>     <input type="number" name="NO_OF_ROAD_WORKS_BALANCE"       value="5"     min="0" step="1"/></div>
+            <div><label>Length Balance (km)</label>            <input type="number" name="LENGTH_OF_ROAD_WORK_BALANCE"    value="12.3"  min="0" step="0.01"/></div>
+            <div><label>No. of Bridges Balance</label>         <input type="number" name="NO_OF_BRIDGES_BALANCE"          value="0"     min="0" step="1"/></div>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button type="submit" class="btn" id="submitBtn">
+            <span id="btnText">Classify Project</span>
+            <span id="btnSpinner" class="spinner" style="display:none;"></span>
+          </button>
+          <button type="button" class="btn btn-outline" id="resetBtn">Reset</button>
+        </div>
+
+      </form>
+    </div>
+
+    <!-- RIGHT: Sidebar -->
+    <div class="sidebar">
+
+      <!-- Model Performance -->
+      <div class="card" id="model-info-card">
+        <div class="card-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Model Performance
+        </div>
+        <div class="stat-row">
+          <div class="stat-box"><div class="stat-val" id="statAcc">–</div><div class="stat-lbl">Test Accuracy</div></div>
+          <div class="stat-box"><div class="stat-val" id="statCV" style="font-size:.95rem;">–</div><div class="stat-lbl">CV Mean ± Std</div></div>
+          <div class="stat-box"><div class="stat-val" id="statCls">–</div><div class="stat-lbl">Classes</div></div>
+        </div>
+        <p style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:10px;">Top Feature Importances</p>
+        <div id="featList"></div>
+      </div>
+
+      <!-- Scheme Guide -->
+      <div class="card">
+        <div class="card-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+          PMGSY Scheme Guide
+        </div>
+        <div class="scheme-item"><div class="dot dot-I"></div><div><div class="scheme-name">PMGSY-I</div><div class="scheme-desc">Phase I (2000–): New all-weather roads to unconnected rural habitations.</div></div></div>
+        <div class="scheme-item"><div class="dot dot-II"></div><div><div class="scheme-name">PMGSY-II</div><div class="scheme-desc">Phase II (2013–): Upgradation of existing rural roads to higher-order networks.</div></div></div>
+        <div class="scheme-item"><div class="dot dot-III"></div><div><div class="scheme-name">PMGSY-III</div><div class="scheme-desc">Phase III (2019–): Consolidation of Through Routes and Major Rural Links.</div></div></div>
+        <div class="scheme-item"><div class="dot dot-RCP"></div><div><div class="scheme-name">RCPLWEA</div><div class="scheme-desc">Roads & Bridges in LWE-Affected Areas — strategic connectivity.</div></div></div>
+        <div class="scheme-item"><div class="dot dot-JAN"></div><div><div class="scheme-name">PM-JANMAN</div><div class="scheme-desc">PM-JANMAN (2023–): Road connectivity for Particularly Vulnerable Tribal Groups.</div></div></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       RESULT SECTION — full width, always below the form
+  ════════════════════════════════════════════════════════════════ -->
+  <div id="result-section">
+    <div class="result-card">
+
+      <!-- Header band -->
+      <div class="result-header" id="resultHeader">
+        <div class="result-title">Classification Result</div>
+        <div class="result-header-top">
+          <span class="scheme-pill" id="schemePill">–</span>
+          <span class="conf-chip" id="confChip">Confidence: –</span>
+        </div>
+      </div>
+
+      <!-- Body: probabilities + explanation side by side -->
+      <div class="result-body">
+
+        <div class="result-probs">
+          <h3>Scheme Probabilities</h3>
+          <div id="probList"></div>
+        </div>
+
+        <div class="result-explain">
+          <h3 id="explainLabel">AI Explanation (IBM Granite)</h3>
+          <div class="explain-text" id="explainText">Loading explanation…</div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div><!-- /page -->
+
+<div id="toast"></div>
+
+<footer>
+  PMGSY Intelligent Classifier &nbsp;|&nbsp; ML: Random Forest (89.7% accuracy) &nbsp;|&nbsp; AI: IBM Granite-4-H-Small &nbsp;|&nbsp; Data: PMGSY District Dataset
+</footer>
+
+<script>
+// Relative URL works when served by Flask at http://localhost:5000
+// Absolute fallback when opened as file://
+const API = location.protocol === "file:" ? "http://localhost:5000" : "";
+
+// ── Toast ────────────────────────────────────────────────────────
+function toast(msg, dur=4000){
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), dur);
+}
+
+// ── Pill colour class by scheme ──────────────────────────────────
+function pillClass(s){
+  return {"PMGSY-I":"pill-I","PMGSY-II":"pill-II","PMGSY-III":"pill-III","RCPLWEA":"pill-RCP","PM-JANMAN":"pill-JAN"}[s] || "pill-I";
+}
+function barClass(s){
+  return {"PMGSY-I":"bar-I","PMGSY-II":"bar-II","PMGSY-III":"bar-III","RCPLWEA":"bar-RCP","PM-JANMAN":"bar-JAN"}[s] || "bar-I";
+}
+
+// ── Load model info on startup ───────────────────────────────────
+async function loadModelInfo(){
+  try {
+    const r = await fetch(API + "/model-info");
+    if (!r.ok) return;
+    const d = await r.json();
+    document.getElementById("statAcc").textContent = (d.accuracy * 100).toFixed(1) + "%";
+    document.getElementById("statCV").textContent  = (d.cv_mean  * 100).toFixed(1) + "% ± " + (d.cv_std * 100).toFixed(1) + "%";
+    document.getElementById("statCls").textContent = d.classes.length;
+
+    const names = {
+      COST_OF_WORKS_SANCTIONED:"Cost Sanctioned", EXPENDITURE_OCCURED:"Expenditure",
+      LENGTH_OF_ROAD_WORK_SANCTIONED:"Length Sanctioned", COST_PER_KM:"Cost per km",
+      NO_OF_ROAD_WORK_SANCTIONED:"Roads Sanctioned", COMPLETION_RATE:"Completion Rate",
+      EXPENDITURE_RATE:"Expenditure Rate", LENGTH_OF_ROAD_WORK_COMPLETED:"Length Completed",
+      NO_OF_ROAD_WORKS_BALANCE:"Roads Balance", BALANCE_RATIO:"Balance Ratio",
+      BRIDGE_RATIO:"Bridge Ratio", NO_OF_BRIDGES_SANCTIONED:"Bridges Sanctioned",
+      LENGTH_OF_ROAD_WORK_BALANCE:"Length Balance", NO_OF_ROAD_WORKS_COMPLETED:"Roads Completed",
+    };
+    const sorted = Object.entries(d.feature_importances).sort((a,b)=>b[1]-a[1]).slice(0,8);
+    const maxV = sorted[0][1];
+    const fl = document.getElementById("featList");
+    fl.innerHTML = sorted.map(([k,v]) => `
+      <div class="feat-row">
+        <span class="feat-name">${names[k]||k}</span>
+        <div class="feat-track"><div class="feat-fill" style="width:${(v/maxV*100).toFixed(0)}%"></div></div>
+        <span class="feat-pct">${(v*100).toFixed(1)}%</span>
+      </div>`).join("");
+  } catch(e){
+    document.getElementById("model-info-card").style.display = "none";
+  }
+}
+
+// ── Form submit ──────────────────────────────────────────────────
+document.getElementById("classifyForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const btn   = document.getElementById("submitBtn");
+  const txt   = document.getElementById("btnText");
+  const spin  = document.getElementById("btnSpinner");
+
+  // Build payload from form
+  const fd = new FormData(e.target);
+  const payload = {};
+  fd.forEach((v, k) => { payload[k] = parseFloat(v) || 0; });
+
+  if (!payload.NO_OF_ROAD_WORK_SANCTIONED && !payload.LENGTH_OF_ROAD_WORK_SANCTIONED){
+    toast("Please enter at least the road works sanctioned values."); return;
+  }
+
+  // Loading state
+  btn.disabled = true;
+  txt.textContent = "Classifying…";
+  spin.style.display = "inline-block";
+
+  // Hide previous result
+  document.getElementById("result-section").style.display = "none";
+
+  try {
+    let res;
+    try {
+      res = await fetch(API + "/predict", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify(payload)
+      });
+    } catch(netErr){
+      throw new Error(
+        "Cannot reach Flask server. Start it with:\n  python pmgsy_app/backend/app.py\nThen open http://localhost:5000"
+      );
+    }
+
+    if (!res.ok){
+      let msg = res.statusText;
+      try { msg = (await res.json()).error || msg; } catch(_){}
+      throw new Error("Server error " + res.status + ": " + msg);
+    }
+
+    const data = await res.json();
+    showResult(data);
+
+  } catch(err){
+    toast("Error: " + err.message, 6000);
+  } finally {
+    btn.disabled = false;
+    txt.textContent = "Classify Project";
+    spin.style.display = "none";
+  }
+});
+
+// ── Render result ─────────────────────────────────────────────────
+function showResult(data){
+  const scheme = data.predicted_scheme;
+  const conf   = data.probabilities[scheme] || 0;
+
+  // Header pill
+  const pill = document.getElementById("schemePill");
+  pill.textContent = scheme;
+  pill.className   = "scheme-pill " + pillClass(scheme);
+  document.getElementById("confChip").textContent = "Confidence: " + (conf * 100).toFixed(1) + "%";
+
+  // Probability bars
+  const pl = document.getElementById("probList");
+  const sorted = Object.entries(data.probabilities).sort((a,b) => b[1] - a[1]);
+  pl.innerHTML = sorted.map(([cls, prob]) => {
+    const pct  = (prob * 100).toFixed(1);
+    const win  = cls === scheme;
+    return `<div class="prob-item">
+      <div class="prob-meta">
+        <span class="prob-name${win ? ' winner' : ''}">${cls}${win ? ' ✓' : ''}</span>
+        <span class="prob-pct">${pct}%</span>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill ${barClass(cls)}" style="width:${pct}%"></div>
+      </div>
+    </div>`;
+  }).join("");
+
+  // Granite explanation
+  const explainEl = document.getElementById("explainText");
+  explainEl.textContent = data.explanation || "No explanation returned.";
+  if (data.llm_error){
+    explainEl.className = "explain-text fallback";
+    document.getElementById("explainLabel").textContent = "Fallback Explanation (LLM unavailable)";
+  } else {
+    explainEl.className = "explain-text";
+    document.getElementById("explainLabel").textContent = "AI Explanation (IBM Granite)";
+  }
+
+  // Show result section and scroll to it
+  const section = document.getElementById("result-section");
+  section.style.display = "block";
+  section.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+// ── Reset ─────────────────────────────────────────────────────────
+document.getElementById("resetBtn").addEventListener("click", () => {
+  document.getElementById("classifyForm").reset();
+  document.getElementById("result-section").style.display = "none";
+  window.scrollTo({ top: 0, behavior: "smooth" });
+});
+
+// ── Init ──────────────────────────────────────────────────────────
+window.addEventListener("DOMContentLoaded", () => {
+  if (location.protocol === "file:"){
+    document.getElementById("file-warning").style.display = "block";
+    document.getElementById("submitBtn").disabled = true;
+    return;
+  }
+  loadModelInfo();
+});
+</script>
+</body>
+</html>
